@@ -1,5 +1,6 @@
 flask
 reportlab
-ultralytics
+opencv-python-headless
 Pillow
 pytesseract
+python-dotenv
