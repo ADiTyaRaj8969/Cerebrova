@@ -11,12 +11,21 @@ from PIL import Image
 
 app = Flask(__name__)
 
-# Load YOLO model once
-model = YOLO("yolov8_weights/best.pt")
+# Define the persistent storage path for Render
+UPLOAD_FOLDER = '/var/data/uploads'
+
+# Construct absolute path for model weights and load YOLO model
+model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "yolov8_weights/best.pt")
+model = YOLO(model_path)
 
 @app.route('/')
 def index():
-    result_path = request.args.get('result')
+    result_filename = request.args.get('result_filename')
+    result_path = None
+    if result_filename:
+        # Construct the public URL for the image, which is served from the symlinked 'static/uploads' directory
+        result_path = url_for('static', filename=f'uploads/{result_filename}')
+
     tumor_status = request.args.get('status')
     confidence = request.args.get('confidence')
     tumor_class = request.args.get('tumor_class')
@@ -27,7 +36,8 @@ def index():
                            status=tumor_status,
                            confidence=confidence,
                            tumor_class=tumor_class,
-                           extracted_text=extracted_text)
+                           extracted_text=extracted_text,
+                           result_filename=result_filename) # Pass filename for the download link
 
 @app.route('/tumor_descriptions')
 def tumor_descriptions():
@@ -36,7 +46,7 @@ def tumor_descriptions():
 @app.route('/download_report')
 def download_report():
     # Get the values from query parameters
-    result_path = request.args.get('result')
+    result_filename = request.args.get('result_filename')
     tumor_status = request.args.get('status')
     confidence = request.args.get('confidence', 'N/A').replace('percent', '%')
     tumor_class = request.args.get('tumor_class', 'Unknown')
@@ -62,9 +72,12 @@ def download_report():
         x_position = 100
         y_position = 400
 
-        # Draw the result image (assuming it's the same path)
-        p.drawString(x_position + image_width + 50, y_position + image_height + 20, "Detection Result:")
-        p.drawImage(result_path, x_position + image_width + 50, y_position, width=image_width, height=image_height)
+        if result_filename:
+            # Construct the full filesystem path to the image on the persistent disk
+            image_path = os.path.join(UPLOAD_FOLDER, result_filename)
+            # Draw the result image
+            p.drawString(x_position + image_width + 50, y_position + image_height + 20, "Detection Result:")
+            p.drawImage(image_path, x_position + image_width + 50, y_position, width=image_width, height=image_height)
 
     except Exception as e:
         p.drawString(100, 300, f"Error adding images: {e}")
@@ -88,15 +101,20 @@ def predict():
     if file.filename == '':
         return "⚠️ Empty filename", 400
 
-    os.makedirs('static', exist_ok=True)
+    # Generate a unique filename
     unique_id = uuid.uuid4().hex
     timestamp = int(time.time())
     result_filename = f'result_{timestamp}_{unique_id}.jpg'
-    result_path = os.path.join('static', result_filename)
-    file.save(result_path)
+    
+    # Define the full path on the persistent disk
+    save_path = os.path.join(UPLOAD_FOLDER, result_filename)
+    
+    # Save the uploaded file to the persistent disk
+    file.save(save_path)
 
-    results = model(result_path)
-    results[0].save(filename=result_path)
+    # Run the model and save the result over the original image
+    results = model(save_path)
+    results[0].save(filename=save_path)
 
     tumor_detected = False
     detected_class = 'None'
@@ -118,17 +136,20 @@ def predict():
             confidence_score = int(max_conf * 100)
 
     try:
-        img = Image.open(result_path)
+        img = Image.open(save_path)
         extracted_text = pytesseract.image_to_string(img)
     except Exception as e:
         extracted_text = f"Error extracting text: {e}"
 
+    # Redirect to the index page with the filename and results
     return redirect(url_for('index',
-                            result=result_path,
+                            result_filename=result_filename,
                             status='detected' if tumor_detected else 'not_detected',
                             confidence=confidence_score,
                             tumor_class=detected_class,
                             extracted_text=extracted_text))
     
 if __name__ == '__main__':
+    # Create the upload folder if it doesn't exist (for local testing)
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
