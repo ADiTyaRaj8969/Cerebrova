@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, make_response, jsonify
+from flask import Flask, render_template, request, make_response, jsonify
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
@@ -9,11 +9,10 @@ import time
 from PIL import Image
 from dotenv import load_dotenv
 from supabase import create_client, Client
-import requests
 import logging
 load_dotenv()
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='.', template_folder='.')
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')

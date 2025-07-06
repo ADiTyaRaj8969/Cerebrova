@@ -189,8 +189,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const formData = new FormData(this);
 
-            console.log("Sending fetch request to /predict");
-            fetch('/predict', {
+            console.log("Sending fetch request to /");
+            fetch('/', {
                 method: 'POST',
                 body: formData
             })
@@ -241,11 +241,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Update download link
                 const downloadBtn = document.getElementById('downloadReportBtn');
                 if (downloadBtn) {
-                    const reportUrl = new URL(window.location.origin + '/download_report');
+                    const reportUrl = new URL(window.location.origin);
+                    reportUrl.searchParams.set('action', 'download_report');
                     reportUrl.searchParams.set('result_path', data.result_path);
                     reportUrl.searchParams.set('status', data.status);
-                    reportUrl.search_params.set('confidence', data.confidence);
-                    reportUrl.search_params.set('tumor_class', data.tumor_class);
+                    reportUrl.searchParams.set('confidence', data.confidence);
+                    reportUrl.searchParams.set('tumor_class', data.tumor_class);
                     downloadBtn.href = reportUrl.toString();
                     downloadBtn.style.display = 'inline-block';
                 }
@@ -277,9 +278,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (learnMoreBtn) {
         learnMoreBtn.addEventListener('click', () => {
             console.log("Learn more button clicked");
-            fetch('/tumor_descriptions')
+            fetch('/?action=tumor_descriptions')
                 .then(response => {
-                    console.log("Received response from /tumor_descriptions");
+                    console.log("Received response from /?action=tumor_descriptions");
                     return response.text();
                 })
                 .then(html => {
