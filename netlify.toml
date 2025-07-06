@@ -1,3 +1,6 @@
 [build]
-  command = ""
+  command = "pip install -r requirements.txt"
   publish = "."
+
+[run]
+  command = "gunicorn app:app"

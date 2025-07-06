@@ -5,3 +5,4 @@ Pillow
 pytesseract
 python-dotenv
 ultralytics
+gunicorn
