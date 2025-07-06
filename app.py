@@ -11,9 +11,13 @@ from PIL import Image
 from dotenv import load_dotenv
 from supabase import create_client, Client
 import requests
+import logging
 load_dotenv()
 
 app = Flask(__name__)
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Supabase setup
 url: str = os.environ.get("SUPABASE_URL")
@@ -21,11 +25,36 @@ key: str = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
 
 # Construct absolute path for model weights and load YOLO model
-model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "yolov8_weights/best.pt")
+# Assuming the script is run from the project root
+model_path = "yolov8_weights/best.pt"
+
+logging.info(f"Attempting to load model from relative path: {model_path}")
+logging.info(f"Current working directory: {os.getcwd()}")
+
+if not os.path.exists(model_path):
+    logging.error(f"Model file not found at relative path {model_path}")
+    # Let's try to find it from the script's directory as a fallback
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    fallback_path = os.path.join(base_dir, "yolov8_weights/best.pt")
+    logging.info(f"Attempting to load model from fallback absolute path: {fallback_path}")
+    if os.path.exists(fallback_path):
+        model_path = fallback_path
+    else:
+        logging.error(f"Model file also not found at fallback path {fallback_path}")
+        # Log directory contents for debugging
+        try:
+            logging.info(f"Contents of CWD '{os.getcwd()}': {os.listdir('.')}")
+            if os.path.exists("yolov8_weights"):
+                 logging.info(f"Contents of yolov8_weights in CWD: {os.listdir('yolov8_weights')}")
+        except Exception as e:
+            logging.error(f"Could not list contents of directories: {e}")
+
 model = YOLO(model_path)
+logging.info("YOLO model loaded successfully.")
 
 @app.route('/')
 def index():
+    logging.debug("Serving index page.")
     return render_template('index.html',
                            result_path=None,
                            status=None,
@@ -35,10 +64,12 @@ def index():
 
 @app.route('/tumor_descriptions')
 def tumor_descriptions():
+    logging.debug("Serving tumor descriptions.")
     return render_template('tumor_descriptions.html')
 
 @app.route('/download_report')
 def download_report():
+    logging.debug("Generating PDF report.")
     # Get the values from query parameters
     result_path = request.args.get('result_path')
     tumor_status = request.args.get('status')
@@ -73,6 +104,7 @@ def download_report():
 
     except Exception as e:
         p.drawString(100, 300, f"Error adding images: {e}")
+        logging.error(f"Error adding images to PDF: {e}")
 
     p.showPage()
     p.save()
@@ -86,14 +118,18 @@ def download_report():
 
 @app.route('/predict', methods=['POST'])
 def predict():
+    logging.debug("Prediction request received.")
     if 'image' not in request.files:
+        logging.error("No file part in request.")
         return jsonify({'error': 'No file uploaded'}), 400
 
     file = request.files['image']
     if file.filename == '':
+        logging.error("Empty filename in request.")
         return jsonify({'error': 'Empty filename'}), 400
 
     try:
+        logging.debug(f"Processing file: {file.filename}")
         # Generate a unique filename
         unique_id = uuid.uuid4().hex
         timestamp = int(time.time())
@@ -105,9 +141,11 @@ def predict():
 
         # Upload to Supabase
         bucket_name = "mri"
+        logging.debug(f"Uploading original image to Supabase bucket: {bucket_name}")
         supabase.storage.from_(bucket_name).upload(result_filename, file_bytes, {'content-type': 'image/jpeg'})
         
         # Run the model on the image
+        logging.debug("Running YOLO model on the image.")
         results = model(img)
         
         # Save the results to a buffer
@@ -119,16 +157,19 @@ def predict():
 
         # Upload the result image to Supabase
         processed_result_filename = f"processed/{result_filename}"
+        logging.debug(f"Uploading processed image to Supabase: {processed_result_filename}")
         supabase.storage.from_(bucket_name).upload(processed_result_filename, buffer.read(), {'content-type': 'image/jpeg'})
         
         # Get the public URL for the processed image
         processed_result_path = supabase.storage.from_(bucket_name).get_public_url(processed_result_filename)
+        logging.debug(f"Processed image URL: {processed_result_path}")
 
         tumor_detected = False
         detected_class = 'None'
         confidence_score = 0
 
         if results[0].boxes and len(results[0].boxes) > 0:
+            logging.debug("Tumor detection boxes found.")
             max_conf = 0
             for box in results[0].boxes:
                 class_name = results[0].names[int(box.cls.item())]
@@ -145,20 +186,26 @@ def predict():
 
         try:
             # Re-open image for OCR
+            logging.debug("Performing OCR on the image.")
             img_for_ocr = Image.open(BytesIO(file_bytes))
             extracted_text = pytesseract.image_to_string(img_for_ocr)
+            logging.debug(f"Extracted text: {extracted_text[:100]}...")
         except Exception as e:
+            logging.error(f"Error during OCR: {e}")
             extracted_text = f"Error extracting text: {e}"
 
-        return jsonify({
+        response_data = {
             'result_path': processed_result_path,
             'status': 'detected' if tumor_detected else 'not_detected',
             'confidence': confidence_score,
             'tumor_class': detected_class,
             'extracted_text': extracted_text
-        })
+        }
+        logging.debug(f"Prediction successful. Returning JSON response: {response_data}")
+        return jsonify(response_data)
 
     except Exception as e:
+        logging.error(f"An error occurred during prediction: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
     
 if __name__ == '__main__':

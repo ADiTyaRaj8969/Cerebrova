@@ -1,6 +1,8 @@
 document.addEventListener('DOMContentLoaded', function() {
+    console.log("DOM fully loaded and parsed");
     // Create neural network background with smooth movement
     function createNeuralNetwork() {
+        console.log("Creating neural network background");
         const container = document.getElementById('neuralNetwork');
         if (!container) return; // Exit if container not found
         const width = window.innerWidth;
@@ -170,6 +172,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (uploadForm) {
         uploadForm.addEventListener('submit', function(e) {
             e.preventDefault(); // Prevent default form submission
+            console.log("Form submission initiated");
 
             // Show loading state
             if (submitBtn) {
@@ -186,12 +189,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const formData = new FormData(this);
 
+            console.log("Sending fetch request to /predict");
             fetch('/predict', {
                 method: 'POST',
                 body: formData
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log("Received response from /predict", response);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
+                console.log("Parsed JSON data:", data);
                 // Hide loading state
                 if (submitBtn) {
                     submitBtn.innerHTML = 'Analyze Scan';
@@ -199,10 +210,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 if (data.error) {
+                    console.error("Server returned an error:", data.error);
                     if (detectionResultText) detectionResultText.textContent = data.error;
                     return;
                 }
 
+                console.log("Updating result display");
                 // Update result display
                 if (detectionImage) {
                     detectionImage.src = data.result_path + '?t=' + Date.now(); // Add cache buster
@@ -243,8 +256,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
-                if (detectionResultText) detectionResultText.textContent = 'An error occurred during analysis.';
+                console.error('Error during fetch:', error);
+                if (detectionResultText) detectionResultText.textContent = 'An error occurred during analysis. Check the console for details.';
                 // Hide loading state
                 if (submitBtn) {
                     submitBtn.innerHTML = 'Analyze Scan';
@@ -264,9 +277,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (learnMoreBtn) {
         learnMoreBtn.addEventListener('click', () => {
+            console.log("Learn more button clicked");
             fetch('/tumor_descriptions')
-                .then(response => response.text())
+                .then(response => {
+                    console.log("Received response from /tumor_descriptions");
+                    return response.text();
+                })
                 .then(html => {
+                    console.log("Populating modal with tumor descriptions");
                     if (tumorDescriptionsContainer) {
                         tumorDescriptionsContainer.innerHTML = html;
                     }
