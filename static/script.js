@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const imagePreview = document.getElementById('imagePreview');
     const submitBtn = document.getElementById('submitBtn');
     const resultBox = document.getElementById('resultBox');
-    const predictionResult = document.getElementById('predictionResult');
+    // const predictionResult = document.getElementById('predictionResult');
     const detectionImage = document.getElementById('detectionImage');
     const detectionResultText = document.getElementById('detectionResultText');
     const sidebar = document.getElementById('sidebar');
@@ -123,7 +123,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // File input handling and preview
     if (fileInput) {
-        fileInput.addEventListener('change', function(e) {
+        fileInput.addEventListener('change', function() {
             const label = document.querySelector('.file-input-label');
             
             if (this.files.length > 0) {

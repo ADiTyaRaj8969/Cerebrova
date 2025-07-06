@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, make_response, jsonify
+from flask import Flask, render_template, request, make_response, jsonify
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
@@ -9,7 +9,6 @@ import time
 from PIL import Image
 from dotenv import load_dotenv
 from supabase import create_client, Client
-import requests
 import logging
 load_dotenv()
 
