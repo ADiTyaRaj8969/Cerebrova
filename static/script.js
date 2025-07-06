@@ -165,54 +165,130 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Handle form submission
+    // Handle form submission with Fetch API
     const uploadForm = document.getElementById('uploadForm');
     if (uploadForm) {
         uploadForm.addEventListener('submit', function(e) {
+            e.preventDefault(); // Prevent default form submission
+
             // Show loading state
             if (submitBtn) {
                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
                 submitBtn.disabled = true;
             }
-            if (detectionResultText) detectionResultText.textContent = "Processing MRI scan... This may take a few seconds.";
+            if (detectionResultText) {
+                detectionResultText.textContent = "Processing MRI scan... This may take a few seconds.";
+            }
+            if (resultBox) {
+                resultBox.classList.add('active');
+                resultBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            const formData = new FormData(this);
+
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide loading state
+                if (submitBtn) {
+                    submitBtn.innerHTML = 'Analyze Scan';
+                    submitBtn.disabled = false;
+                }
+
+                if (data.error) {
+                    if (detectionResultText) detectionResultText.textContent = data.error;
+                    return;
+                }
+
+                // Update result display
+                if (detectionImage) {
+                    detectionImage.src = data.result_path + '?t=' + Date.now(); // Add cache buster
+                }
+
+                if (detectionResultText) {
+                    if (data.status === 'detected') {
+                        if (data.tumor_class && data.tumor_class !== 'None') {
+                            detectionResultText.textContent = "Our AI has detected a potential " + data.tumor_class + " tumor with " + data.confidence + "% confidence. The highlighted areas in the image indicate regions of concern. Please consult with a medical professional for a comprehensive diagnosis and treatment plan.";
+                        } else {
+                            detectionResultText.textContent = "Our AI has detected a potential tumor with " + data.confidence + "% confidence. The highlighted areas in the image indicate regions of concern. Please consult with a medical professional for a comprehensive diagnosis and treatment plan.";
+                        }
+                    } else {
+                        detectionResultText.textContent = "No tumor detected.";
+                    }
+                }
+
+                const confidenceValueElement = document.getElementById('confidenceValue');
+                if (confidenceValueElement) {
+                    confidenceValueElement.textContent = data.confidence;
+                }
+
+                // Update download link
+                const downloadBtn = document.getElementById('downloadReportBtn');
+                if (downloadBtn) {
+                    const reportUrl = new URL(window.location.origin + '/download_report');
+                    reportUrl.searchParams.set('result_path', data.result_path);
+                    reportUrl.searchParams.set('status', data.status);
+                    reportUrl.searchParams.set('confidence', data.confidence);
+                    reportUrl.searchParams.set('tumor_class', data.tumor_class);
+                    reportUrl.searchParams.set('extracted_text', data.extracted_text);
+                    downloadBtn.href = reportUrl.toString();
+                    downloadBtn.style.display = 'inline-block';
+                }
+
+                if(detectionImage) {
+                    detectionImage.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (detectionResultText) detectionResultText.textContent = 'An error occurred during analysis.';
+                // Hide loading state
+                if (submitBtn) {
+                    submitBtn.innerHTML = 'Analyze Scan';
+                    submitBtn.disabled = false;
+                }
+            });
         });
     }
     
-    // Check if we have a result to show on page load
-    window.addEventListener('load', function() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const resultPath = urlParams.get('result_path');
-        const tumorStatus = urlParams.get('status');
-        const confidence = urlParams.get('confidence');
-        const confidenceValueElement = document.getElementById('confidenceValue');
-        const detectionResultText = document.getElementById('detectionResultText');
-        const tumorClass = urlParams.get('tumor_class');
+    // Remove the page load result check as it's now handled by fetch
 
-        if (resultPath && resultBox && detectionImage && detectionResultText) {
-            // Show the result box
-            resultBox.classList.add('active');
+    // Handle "Learn More" modal
+    const learnMoreBtn = document.getElementById('learnMoreBtn');
+    const tumorModal = document.getElementById('tumorModal');
+    const closeModal = document.getElementById('closeModal');
+    const tumorDescriptionsContainer = document.getElementById('tumorDescriptionsContainer');
 
-            // Set the detection image - add cache busting parameter
-            detectionImage.src = resultPath + '?t=' + Date.now();
+    if (learnMoreBtn) {
+        learnMoreBtn.addEventListener('click', () => {
+            fetch('/tumor_descriptions')
+                .then(response => response.text())
+                .then(html => {
+                    if (tumorDescriptionsContainer) {
+                        tumorDescriptionsContainer.innerHTML = html;
+                    }
+                    if (tumorModal) {
+                        tumorModal.style.display = 'block';
+                    }
+                })
+                .catch(error => console.error('Error fetching tumor descriptions:', error));
+        });
+    }
 
-            // Set the detection result text
-            if (tumorStatus === 'detected') {
-                if (tumorClass && tumorClass !== 'None') {
-                    detectionResultText.textContent = "Our AI has detected a potential " + tumorClass + " tumor with " + confidence + "% confidence. The highlighted areas in the image indicate regions of concern. Please consult with a medical professional for a comprehensive diagnosis and treatment plan.";
-                } else {
-                    detectionResultText.textContent = "Our AI has detected a potential tumor with " + confidence + "% confidence. The highlighted areas in the image indicate regions of concern. Please consult with a medical professional for a comprehensive diagnosis and treatment plan.";
-                }
-            } else {
-                detectionResultText.textContent = "No tumor detected.";
+    if (closeModal) {
+        closeModal.addEventListener('click', () => {
+            if (tumorModal) {
+                tumorModal.style.display = 'none';
             }
-            
-            // Scroll to results
-            resultBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            
-            // Set confidence value
-            if (confidenceValueElement) {
-                confidenceValueElement.textContent = confidence;
-            }
+        });
+    }
+
+    window.addEventListener('click', (event) => {
+        if (event.target == tumorModal) {
+            tumorModal.style.display = 'none';
         }
     });
 });

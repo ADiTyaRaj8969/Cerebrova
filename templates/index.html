@@ -186,19 +186,23 @@
             
             <div class="result-content">
                 <div class="prediction" id="predictionResult">TUMOR DETECTION ANALYSIS</div>
-                <img id="detectionImage" class="detection-image" src="{{ result_path if result_path else '' }}" alt="Detection Result">
+                <img id="detectionImage" class="detection-image" src="" alt="Detection Result" style="display: none;">
                 
-<div class="result-details">
-    <h4><i class="fas fa-clipboard-list"></i> Detection Result</h4>
-    <p id="detectionResultText">Processing detection results...</p>
-    <p>Confidence: <span id="confidenceValue"></span></p>
-   {% if result_path and status and confidence and tumor_class and extracted_text %}
-<a style="margin-top: 20px;" href="{{ url_for('download_report', result_path=result_path, status=status, confidence=confidence, tumor_class=tumor_class, extracted_text=extracted_text) }}" class="btn btn-primary"><i class="fas fa-download"></i> Download Report</a>
-{% endif %}
+                <div class="result-details">
+                    <h4><i class="fas fa-clipboard-list"></i> Detection Result</h4>
+                    <p id="detectionResultText">Upload an image to begin analysis.</p>
+                    <p>Confidence: <span id="confidenceValue">N/A</span></p>
+                    <a style="margin-top: 20px; display: none;" href="#" class="btn btn-primary" id="downloadReportBtn"><i class="fas fa-download"></i> Download Report</a>
+                </div>
+                <h3 style="margin-top: 20px;"><a style="color: white; cursor: pointer;" id="learnMoreBtn">Learn more about tumor types</a></h3>
+            </div>
+        </div>
 
-</div>
-            <h3 style="margin-top: 20px; "><a style="color: white" href="/tumor_descriptions">Learn more about tumor types</a></h3>
-
+        <!-- Tumor Descriptions Modal -->
+        <div class="modal" id="tumorModal">
+            <div class="modal-content">
+                <span class="close-modal" id="closeModal">&times;</span>
+                <div id="tumorDescriptionsContainer"></div>
             </div>
         </div>
         

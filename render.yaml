@@ -7,3 +7,7 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.6
+    disks:
+      - name: cerebrova-data
+        mountPath: /var/data
+        sizeGB: 1

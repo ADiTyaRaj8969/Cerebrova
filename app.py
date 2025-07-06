@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, make_response
+from flask import Flask, render_template, request, redirect, url_for, make_response, jsonify
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
@@ -24,81 +24,14 @@ supabase: Client = create_client(url, key)
 model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "yolov8_weights/best.pt")
 model = YOLO(model_path)
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/')
 def index():
-    if request.method == 'POST':
-        if 'image' not in request.files:
-            return "❌ No file uploaded", 400
-
-        file = request.files['image']
-        if file.filename == '':
-            return "⚠️ Empty filename", 400
-
-        # Generate a unique filename
-        unique_id = uuid.uuid4().hex
-        timestamp = int(time.time())
-        result_filename = f'result_{timestamp}_{unique_id}.jpg'
-        
-        # Read file into memory
-        file_bytes = file.read()
-        img = Image.open(BytesIO(file_bytes))
-
-        # Upload to Supabase
-        bucket_name = "mri"
-        supabase.storage.from_(bucket_name).upload(result_filename, file_bytes)
-        
-        # Get public URL
-        result_path = supabase.storage.from_(bucket_name).get_public_url(result_filename)
-
-        # Run the model on the image
-        results = model(img)
-        
-        # Save the results to a buffer
-        res_plotted = results[0].plot()
-        im_pil = Image.fromarray(res_plotted)
-        buffer = BytesIO()
-        im_pil.save(buffer, format="JPEG")
-        buffer.seek(0)
-
-        # Upload the result image to Supabase
-        supabase.storage.from_(bucket_name).upload(f"processed/{result_filename}", buffer.read())
-        
-        # Get the public URL for the processed image
-        processed_result_path = supabase.storage.from_(bucket_name).get_public_url(f"processed/{result_filename}")
-
-        tumor_detected = False
-        detected_class = 'None'
-        confidence_score = 0
-
-        if results[0].boxes and len(results[0].boxes) > 0:
-            max_conf = 0
-            for box in results[0].boxes:
-                class_name = results[0].names[int(box.cls.item())]
-                conf = box.conf.item()
-                if conf > max_conf:
-                    max_conf = conf
-                if class_name in ['Glioma', 'Meningioma', 'Pituitary']:
-                    tumor_detected = True
-                    detected_class = class_name
-                    confidence_score = int(conf * 100)
-                    break
-            if not tumor_detected:
-                confidence_score = int(max_conf * 100)
-
-        try:
-            img = Image.open(BytesIO(file_bytes))
-            extracted_text = pytesseract.image_to_string(img)
-        except Exception as e:
-            extracted_text = f"Error extracting text: {e}"
-
-        return render_template('index.html',
-                               result_path=processed_result_path,
-                               status='detected' if tumor_detected else 'not_detected',
-                               confidence=confidence_score,
-                               tumor_class=detected_class,
-                               extracted_text=extracted_text)
-
-    return render_template('index.html')
+    return render_template('index.html',
+                           result_path=None,
+                           status=None,
+                           confidence=None,
+                           tumor_class=None,
+                           extracted_text=None)
 
 @app.route('/tumor_descriptions')
 def tumor_descriptions():
@@ -151,5 +84,82 @@ def download_report():
 
     return response
 
+@app.route('/predict', methods=['POST'])
+def predict():
+    if 'image' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
+
+    file = request.files['image']
+    if file.filename == '':
+        return jsonify({'error': 'Empty filename'}), 400
+
+    try:
+        # Generate a unique filename
+        unique_id = uuid.uuid4().hex
+        timestamp = int(time.time())
+        result_filename = f'result_{timestamp}_{unique_id}.jpg'
+        
+        # Read file into memory
+        file_bytes = file.read()
+        img = Image.open(BytesIO(file_bytes))
+
+        # Upload to Supabase
+        bucket_name = "mri"
+        supabase.storage.from_(bucket_name).upload(result_filename, file_bytes, {'content-type': 'image/jpeg'})
+        
+        # Run the model on the image
+        results = model(img)
+        
+        # Save the results to a buffer
+        res_plotted = results[0].plot()
+        im_pil = Image.fromarray(res_plotted)
+        buffer = BytesIO()
+        im_pil.save(buffer, format="JPEG")
+        buffer.seek(0)
+
+        # Upload the result image to Supabase
+        processed_result_filename = f"processed/{result_filename}"
+        supabase.storage.from_(bucket_name).upload(processed_result_filename, buffer.read(), {'content-type': 'image/jpeg'})
+        
+        # Get the public URL for the processed image
+        processed_result_path = supabase.storage.from_(bucket_name).get_public_url(processed_result_filename)
+
+        tumor_detected = False
+        detected_class = 'None'
+        confidence_score = 0
+
+        if results[0].boxes and len(results[0].boxes) > 0:
+            max_conf = 0
+            for box in results[0].boxes:
+                class_name = results[0].names[int(box.cls.item())]
+                conf = box.conf.item()
+                if conf > max_conf:
+                    max_conf = conf
+                if class_name in ['Glioma', 'Meningioma', 'Pituitary']:
+                    tumor_detected = True
+                    detected_class = class_name
+                    confidence_score = int(conf * 100)
+                    break
+            if not tumor_detected:
+                confidence_score = int(max_conf * 100)
+
+        try:
+            # Re-open image for OCR
+            img_for_ocr = Image.open(BytesIO(file_bytes))
+            extracted_text = pytesseract.image_to_string(img_for_ocr)
+        except Exception as e:
+            extracted_text = f"Error extracting text: {e}"
+
+        return jsonify({
+            'result_path': processed_result_path,
+            'status': 'detected' if tumor_detected else 'not_detected',
+            'confidence': confidence_score,
+            'tumor_class': detected_class,
+            'extracted_text': extracted_text
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
