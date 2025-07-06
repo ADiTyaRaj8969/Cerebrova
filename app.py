@@ -12,7 +12,7 @@ from PIL import Image
 app = Flask(__name__)
 
 # Load YOLO model once
-model = YOLO(r"..\yolov8_weights\best.pt")
+model = YOLO("yolov8_weights/best.pt")
 
 @app.route('/')
 def index():
