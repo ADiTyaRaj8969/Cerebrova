@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const imagePreview = document.getElementById('imagePreview');
     const submitBtn = document.getElementById('submitBtn');
     const resultBox = document.getElementById('resultBox');
-    // const predictionResult = document.getElementById('predictionResult');
+    const predictionResult = document.getElementById('predictionResult');
     const detectionImage = document.getElementById('detectionImage');
     const detectionResultText = document.getElementById('detectionResultText');
     const sidebar = document.getElementById('sidebar');
@@ -123,7 +123,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // File input handling and preview
     if (fileInput) {
-        fileInput.addEventListener('change', function() {
+        fileInput.addEventListener('change', function(e) {
             const label = document.querySelector('.file-input-label');
             
             if (this.files.length > 0) {
@@ -244,8 +244,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     const reportUrl = new URL(window.location.origin + '/download_report');
                     reportUrl.searchParams.set('result_path', data.result_path);
                     reportUrl.searchParams.set('status', data.status);
-                    reportUrl.searchParams.set('confidence', data.confidence);
-                    reportUrl.searchParams.set('tumor_class', data.tumor_class);
+                    reportUrl.search_params.set('confidence', data.confidence);
+                    reportUrl.search_params.set('tumor_class', data.tumor_class);
                     downloadBtn.href = reportUrl.toString();
                     downloadBtn.style.display = 'inline-block';
                 }
