@@ -13,6 +13,7 @@ app = Flask(__name__)
 
 # Define the persistent storage path for Render
 UPLOAD_FOLDER = '/var/data/uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Construct absolute path for model weights and load YOLO model
 model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "yolov8_weights/best.pt")
