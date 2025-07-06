@@ -4,3 +4,4 @@ opencv-python-headless
 Pillow
 pytesseract
 python-dotenv
+ultralytics
