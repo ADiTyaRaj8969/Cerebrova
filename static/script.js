@@ -244,8 +244,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     const reportUrl = new URL(window.location.origin + '/download_report');
                     reportUrl.searchParams.set('result_path', data.result_path);
                     reportUrl.searchParams.set('status', data.status);
-                    reportUrl.search_params.set('confidence', data.confidence);
-                    reportUrl.search_params.set('tumor_class', data.tumor_class);
+                    reportUrl.searchParams.set('confidence', data.confidence);
+                    reportUrl.searchParams.set('tumor_class', data.tumor_class);
                     downloadBtn.href = reportUrl.toString();
                     downloadBtn.style.display = 'inline-block';
                 }

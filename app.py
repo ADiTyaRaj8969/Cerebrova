@@ -23,33 +23,40 @@ url: str = os.environ.get("SUPABASE_URL")
 key: str = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
 
-# Construct absolute path for model weights and load YOLO model
-# Assuming the script is run from the project root
-model_path = "yolov8_weights/best.pt"
+# Function to load the model from Supabase
+def load_model_from_supabase():
+    try:
+        logging.info("Attempting to download model from Supabase...")
+        model_bucket = "model"
+        model_file_name = "best.pt"
+        
+        # Download the model file from Supabase storage
+        response = supabase.storage.from_(model_bucket).download(model_file_name)
+        
+        # Create a temporary file to save the model
+        temp_model_path = f"/tmp/{model_file_name}"
+        with open(temp_model_path, "wb") as f:
+            f.write(response)
+        
+        logging.info(f"Model downloaded and saved to {temp_model_path}")
+        
+        # Load the model from the temporary file
+        model = YOLO(temp_model_path)
+        logging.info("YOLO model loaded successfully from Supabase.")
+        return model
+    except Exception as e:
+        logging.error(f"An error occurred while loading the model from Supabase: {e}", exc_info=True)
+        return None
 
-logging.info(f"Attempting to load model from relative path: {model_path}")
-logging.info(f"Current working directory: {os.getcwd()}")
+# Load the model
+model = load_model_from_supabase()
 
-if not os.path.exists(model_path):
-    logging.error(f"Model file not found at relative path {model_path}")
-    # Let's try to find it from the script's directory as a fallback
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    fallback_path = os.path.join(base_dir, "yolov8_weights/best.pt")
-    logging.info(f"Attempting to load model from fallback absolute path: {fallback_path}")
-    if os.path.exists(fallback_path):
-        model_path = fallback_path
-    else:
-        logging.error(f"Model file also not found at fallback path {fallback_path}")
-        # Log directory contents for debugging
-        try:
-            logging.info(f"Contents of CWD '{os.getcwd()}': {os.listdir('.')}")
-            if os.path.exists("yolov8_weights"):
-                 logging.info(f"Contents of yolov8_weights in CWD: {os.listdir('yolov8_weights')}")
-        except Exception as e:
-            logging.error(f"Could not list contents of directories: {e}")
-
-model = YOLO(model_path)
-logging.info("YOLO model loaded successfully.")
+if model is None:
+    logging.critical("Failed to load model from Supabase. Application cannot start.")
+    # Depending on the desired behavior, you might want to exit or handle this differently
+    # For a web app, you might want to return a 503 Service Unavailable on all requests
+    # or have a middleware that checks if the model is loaded.
+    # For now, we'll let it proceed, and it will likely fail on the first request that needs the model.
 
 @app.route('/')
 def index():
