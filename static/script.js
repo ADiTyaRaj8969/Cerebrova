@@ -198,10 +198,10 @@
                 
                 // Scroll to results
                 resultBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-
-            // Set confidence value
-            if (confidenceValueElement) {
-                confidenceValueElement.textContent = confidence;
+                
+                // Set confidence value
+                if (confidenceValueElement) {
+                    confidenceValueElement.textContent = confidence;
+                }
             }
         });

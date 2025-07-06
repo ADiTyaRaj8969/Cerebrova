@@ -106,6 +106,7 @@ def predict():
     
     # Read file into memory
     file_bytes = file.read()
+    img = Image.open(BytesIO(file_bytes))
 
     # Upload to Supabase
     bucket_name = "mri"
@@ -113,11 +114,6 @@ def predict():
     
     # Get public URL
     result_path = supabase.storage.from_(bucket_name).get_public_url(result_filename)
-
-    # Download the image from the URL
-    response = requests.get(result_path)
-    img_bytes = BytesIO(response.content)
-    img = Image.open(img_bytes)
 
     # Run the model on the image
     results = model(img)
