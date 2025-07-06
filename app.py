@@ -6,7 +6,6 @@ from ultralytics import YOLO
 import os
 import uuid
 import time
-import pytesseract
 from PIL import Image
 from dotenv import load_dotenv
 from supabase import create_client, Client
@@ -59,8 +58,7 @@ def index():
                            result_path=None,
                            status=None,
                            confidence=None,
-                           tumor_class=None,
-                           extracted_text=None)
+                           tumor_class=None)
 
 @app.route('/tumor_descriptions')
 def tumor_descriptions():
@@ -75,7 +73,6 @@ def download_report():
     tumor_status = request.args.get('status')
     confidence = request.args.get('confidence', 'N/A').replace('percent', '%')
     tumor_class = request.args.get('tumor_class', 'Unknown')
-    extracted_text = request.args.get('extracted_text', 'No text extracted')
 
     # Create PDF buffer
     buffer = BytesIO()
@@ -184,22 +181,11 @@ def predict():
             if not tumor_detected:
                 confidence_score = int(max_conf * 100)
 
-        try:
-            # Re-open image for OCR
-            logging.debug("Performing OCR on the image.")
-            img_for_ocr = Image.open(BytesIO(file_bytes))
-            extracted_text = pytesseract.image_to_string(img_for_ocr)
-            logging.debug(f"Extracted text: {extracted_text[:100]}...")
-        except Exception as e:
-            logging.error(f"Error during OCR: {e}")
-            extracted_text = f"Error extracting text: {e}"
-
         response_data = {
             'result_path': processed_result_path,
             'status': 'detected' if tumor_detected else 'not_detected',
             'confidence': confidence_score,
-            'tumor_class': detected_class,
-            'extracted_text': extracted_text
+            'tumor_class': detected_class
         }
         logging.debug(f"Prediction successful. Returning JSON response: {response_data}")
         return jsonify(response_data)

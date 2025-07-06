@@ -2,7 +2,6 @@ flask
 reportlab
 opencv-python-headless
 Pillow
-pytesseract
 python-dotenv
 ultralytics
 gunicorn
