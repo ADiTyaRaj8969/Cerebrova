@@ -186,14 +186,14 @@
             
             <div class="result-content">
                 <div class="prediction" id="predictionResult">TUMOR DETECTION ANALYSIS</div>
-                <img id="detectionImage" class="detection-image" src="" alt="Detection Result">
+                <img id="detectionImage" class="detection-image" src="{{ result_path if result_path else '' }}" alt="Detection Result">
                 
 <div class="result-details">
     <h4><i class="fas fa-clipboard-list"></i> Detection Result</h4>
     <p id="detectionResultText">Processing detection results...</p>
     <p>Confidence: <span id="confidenceValue"></span></p>
    {% if result_path and status and confidence and tumor_class and extracted_text %}
-<a style="margin-top: 20px;" href="{{ url_for('download_report', result=result_path, status=status, confidence=confidence, tumor_class=tumor_class) }}" class="btn btn-primary"><i class="fas fa-download"></i> Download Report</a>
+<a style="margin-top: 20px;" href="{{ url_for('download_report', result_path=result_path, status=status, confidence=confidence, tumor_class=tumor_class, extracted_text=extracted_text) }}" class="btn btn-primary"><i class="fas fa-download"></i> Download Report</a>
 {% endif %}
 
 </div>

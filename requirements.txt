@@ -6,3 +6,7 @@ pytesseract
 python-dotenv
 ultralytics
 gunicorn
+supabase
+gotrue
+storage3
+requests

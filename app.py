@@ -8,12 +8,17 @@ import uuid
 import time
 import pytesseract
 from PIL import Image
+from dotenv import load_dotenv
+from supabase import create_client, Client
+import requests
+load_dotenv()
 
 app = Flask(__name__)
 
-# Define the persistent storage path for Render
-UPLOAD_FOLDER = '/var/data/uploads'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# Supabase setup
+url: str = os.environ.get("SUPABASE_URL")
+key: str = os.environ.get("SUPABASE_KEY")
+supabase: Client = create_client(url, key)
 
 # Construct absolute path for model weights and load YOLO model
 model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "yolov8_weights/best.pt")
@@ -21,12 +26,7 @@ model = YOLO(model_path)
 
 @app.route('/')
 def index():
-    result_filename = request.args.get('result_filename')
-    result_path = None
-    if result_filename:
-        # Construct the public URL for the image, which is served from the symlinked 'static/uploads' directory
-        result_path = url_for('static', filename=f'uploads/{result_filename}')
-
+    result_path = request.args.get('result_path')
     tumor_status = request.args.get('status')
     confidence = request.args.get('confidence')
     tumor_class = request.args.get('tumor_class')
@@ -37,8 +37,7 @@ def index():
                            status=tumor_status,
                            confidence=confidence,
                            tumor_class=tumor_class,
-                           extracted_text=extracted_text,
-                           result_filename=result_filename) # Pass filename for the download link
+                           extracted_text=extracted_text)
 
 @app.route('/tumor_descriptions')
 def tumor_descriptions():
@@ -47,7 +46,7 @@ def tumor_descriptions():
 @app.route('/download_report')
 def download_report():
     # Get the values from query parameters
-    result_filename = request.args.get('result_filename')
+    result_path = request.args.get('result_path')
     tumor_status = request.args.get('status')
     confidence = request.args.get('confidence', 'N/A').replace('percent', '%')
     tumor_class = request.args.get('tumor_class', 'Unknown')
@@ -73,12 +72,10 @@ def download_report():
         x_position = 100
         y_position = 400
 
-        if result_filename:
-            # Construct the full filesystem path to the image on the persistent disk
-            image_path = os.path.join(UPLOAD_FOLDER, result_filename)
+        if result_path:
             # Draw the result image
             p.drawString(x_position + image_width + 50, y_position + image_height + 20, "Detection Result:")
-            p.drawImage(image_path, x_position + image_width + 50, y_position, width=image_width, height=image_height)
+            p.drawImage(result_path, x_position + image_width + 50, y_position, width=image_width, height=image_height)
 
     except Exception as e:
         p.drawString(100, 300, f"Error adding images: {e}")
@@ -107,15 +104,36 @@ def predict():
     timestamp = int(time.time())
     result_filename = f'result_{timestamp}_{unique_id}.jpg'
     
-    # Define the full path on the persistent disk
-    save_path = os.path.join(UPLOAD_FOLDER, result_filename)
-    
-    # Save the uploaded file to the persistent disk
-    file.save(save_path)
+    # Read file into memory
+    file_bytes = file.read()
 
-    # Run the model and save the result over the original image
-    results = model(save_path)
-    results[0].save(filename=save_path)
+    # Upload to Supabase
+    bucket_name = "mri"
+    supabase.storage.from_(bucket_name).upload(result_filename, file_bytes)
+    
+    # Get public URL
+    result_path = supabase.storage.from_(bucket_name).get_public_url(result_filename)
+
+    # Download the image from the URL
+    response = requests.get(result_path)
+    img_bytes = BytesIO(response.content)
+    img = Image.open(img_bytes)
+
+    # Run the model on the image
+    results = model(img)
+    
+    # Save the results to a buffer
+    res_plotted = results[0].plot()
+    im_pil = Image.fromarray(res_plotted)
+    buffer = BytesIO()
+    im_pil.save(buffer, format="JPEG")
+    buffer.seek(0)
+
+    # Upload the result image to Supabase
+    supabase.storage.from_(bucket_name).upload(f"processed/{result_filename}", buffer.read())
+    
+    # Get the public URL for the processed image
+    processed_result_path = supabase.storage.from_(bucket_name).get_public_url(f"processed/{result_filename}")
 
     tumor_detected = False
     detected_class = 'None'
@@ -137,20 +155,18 @@ def predict():
             confidence_score = int(max_conf * 100)
 
     try:
-        img = Image.open(save_path)
+        img = Image.open(BytesIO(file_bytes))
         extracted_text = pytesseract.image_to_string(img)
     except Exception as e:
         extracted_text = f"Error extracting text: {e}"
 
     # Redirect to the index page with the filename and results
     return redirect(url_for('index',
-                            result_filename=result_filename,
+                            result_path=processed_result_path,
                             status='detected' if tumor_detected else 'not_detected',
                             confidence=confidence_score,
                             tumor_class=detected_class,
                             extracted_text=extracted_text))
     
 if __name__ == '__main__':
-    # Create the upload folder if it doesn't exist (for local testing)
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)

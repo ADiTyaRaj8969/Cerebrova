@@ -166,7 +166,7 @@
         // Check if we have a result to show on page load
         window.addEventListener('load', function() {
             const urlParams = new URLSearchParams(window.location.search);
-            const resultPath = urlParams.get('result');
+            const resultPath = urlParams.get('result_path');
             const tumorStatus = urlParams.get('status');
             const confidence = urlParams.get('confidence');
             // const extractedText = urlParams.get('extracted_text');
