@@ -1,0 +1,20 @@
+# Generated result images from uploads
+result_*.jpg
+result_*.png
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment variables
+.env
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# OS files
+.DS_Store
+Thumbs.db
