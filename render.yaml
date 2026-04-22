@@ -2,12 +2,12 @@ services:
   - type: web
     name: cerebrova
     env: python
-    buildCommand: "pip install -r requirements.txt && mkdir -p /var/data/uploads && ln -sfn /var/data/uploads static/uploads"
+    buildCommand: "pip install -r requirements.txt"
     startCommand: "gunicorn --config gunicorn.conf.py app:app"
     envVars:
       - key: PYTHON_VERSION
-        value: 3.10.6
-    disks:
-      - name: cerebrova-data
-        mountPath: /var/data
-        sizeGB: 1
+        value: 3.11.0
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false

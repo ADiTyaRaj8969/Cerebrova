@@ -28,11 +28,33 @@ Cerebrova is a web application that detects brain tumors from MRI scans using a 
 
 ---
 
+## Project Structure
+
+```
+Cerebrova/
+├── app.py                  # Flask application
+├── requirements.txt
+├── gunicorn.conf.py        # Gunicorn server config
+├── render.yaml             # Render deployment config
+├── static/
+│   ├── style.css
+│   ├── script.js
+│   ├── favicon.ico
+│   └── icons8-brain-*.png
+├── templates/
+│   ├── index.html
+│   └── tumor_descriptions.html
+└── yolov8_weights/
+    └── best.pt             # Trained model weights
+```
+
+---
+
 ## Getting Started
 
 ### Prerequisites
 
-- Python 3.10+
+- Python 3.11+
 - A [Supabase](https://supabase.com) project with a storage bucket named `mri`
 
 ### Installation
@@ -58,7 +80,21 @@ SUPABASE_KEY=your_supabase_anon_key
 python app.py
 ```
 
-Then open [http://localhost:5000](http://localhost:5000) in your browser.
+Open [http://localhost:5000](http://localhost:5000) in your browser.
+
+---
+
+## Deploying to Render
+
+1. Push this repo to GitHub
+2. Go to [render.com](https://render.com) → **New Web Service** → connect your repo
+3. Render will auto-detect `render.yaml` — no manual config needed
+4. Set the following environment variables in the Render dashboard:
+   - `SUPABASE_URL`
+   - `SUPABASE_KEY`
+5. Click **Deploy**
+
+> The model weights (`yolov8_weights/best.pt`) are included in the repo so no extra setup is needed.
 
 ---
 
@@ -83,18 +119,6 @@ Upload an MRI image for analysis.
 ### `GET /download_report`
 
 Returns a PDF report. Query params: `result_path`, `status`, `confidence`, `tumor_class`
-
----
-
-## Deployment
-
-### Render
-
-A `render.yaml` is included. Connect the repo in [Render](https://render.com), set the environment variables, and deploy.
-
-### PythonAnywhere
-
-Upload the project files and point the WSGI config to `pythonanywhere_wsgi.py`. Set the environment variables in the PythonAnywhere dashboard.
 
 ---
 
