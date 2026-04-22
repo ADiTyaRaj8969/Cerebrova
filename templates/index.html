@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cerebrova - Brain Tumour Detection</title>
-    <!-- <link rel="icon" type="image/x-icon" href="static/favicon.ico"> -->
-    <link type="image/png" sizes="32x32" rel="icon" href="icons8-brain-32.png">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link type="image/png" sizes="32x32" rel="icon" href="{{ url_for('static', filename='icons8-brain-32.png') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <!-- Overlay for sidebar -->
@@ -211,6 +211,6 @@
             <p style="margin-top: 10px;">&copy; 2025 Cerebrova Diagnostics. All rights reserved.</p>
         </div>
     </div>
-    <script src="script.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
