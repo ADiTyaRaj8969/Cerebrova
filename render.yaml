@@ -7,6 +7,8 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
+      - key: YOLO_CONFIG_DIR
+        value: /tmp/.yolo_config
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_KEY
