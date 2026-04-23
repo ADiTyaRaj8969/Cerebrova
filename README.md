@@ -1,17 +1,19 @@
-# Cerebrova — AI Brain Tumor Detection
+# Cerebrova — AI Brain Tumour Detection
 
-Cerebrova is a web application that detects brain tumors from MRI scans using a fine-tuned YOLOv8 model. Upload an MRI image and get instant results: tumor type, confidence score, annotated scan, and a downloadable PDF report.
+Cerebrova is a web application that detects brain tumours from MRI scans using a fine-tuned YOLOv8n model. Upload an MRI image and get instant results — tumour type, confidence score, annotated scan, and a downloadable PDF report. No cloud storage, no sign-up required.
+
+> **Live demo:** https://cerebrova-lk7q.onrender.com
 
 ---
 
 ## Features
 
-- **Tumor Detection** — identifies Glioma, Meningioma, and Pituitary tumors
-- **Confidence Score** — shows model confidence for each prediction
-- **Annotated Output** — returns the MRI with bounding boxes drawn
-- **PDF Report** — download a structured report of the analysis
-- **Cloud Storage** — MRI uploads and results stored securely in Supabase
-- **Tumor Info Pages** — descriptions of each tumor type for patient education
+- **Tumour Detection** — identifies Glioma, Meningioma, and Pituitary tumours
+- **Confidence Score** — model confidence displayed for every prediction
+- **Annotated MRI** — result image returned with bounding boxes overlaid
+- **PDF Report** — professionally formatted report with embedded scan and findings
+- **Tumour Info** — in-app descriptions of each tumour type
+- **Privacy first** — images are processed in memory and never stored anywhere
 
 ---
 
@@ -20,11 +22,11 @@ Cerebrova is a web application that detects brain tumors from MRI scans using a 
 | Layer | Technology |
 |---|---|
 | Backend | Python, Flask |
-| AI Model | YOLOv8 (Ultralytics) |
-| Storage | Supabase |
+| AI Model | YOLOv8n (Ultralytics) |
 | PDF Generation | ReportLab |
 | Image Processing | Pillow, OpenCV |
 | Server | Gunicorn |
+| Hosting | Render |
 
 ---
 
@@ -32,7 +34,7 @@ Cerebrova is a web application that detects brain tumors from MRI scans using a 
 
 ```
 Cerebrova/
-├── app.py                  # Flask application
+├── app.py                  # Flask application & routes
 ├── requirements.txt
 ├── gunicorn.conf.py        # Gunicorn server config
 ├── render.yaml             # Render deployment config
@@ -45,56 +47,36 @@ Cerebrova/
 │   ├── index.html
 │   └── tumor_descriptions.html
 └── yolov8_weights/
-    └── best.pt             # Trained model weights
+    └── best.pt             # Trained YOLOv8n weights
 ```
 
 ---
 
-## Getting Started
-
-### Prerequisites
-
-- Python 3.11+
-- A [Supabase](https://supabase.com) project with a storage bucket named `mri`
-
-### Installation
+## Run Locally
 
 ```bash
 git clone https://github.com/ADiTyaRaj8969/Cerebrova.git
 cd Cerebrova
 pip install -r requirements.txt
-```
-
-### Environment Variables
-
-Create a `.env` file in the root directory:
-
-```
-SUPABASE_URL=your_supabase_project_url
-SUPABASE_KEY=your_supabase_anon_key
-```
-
-### Run Locally
-
-```bash
 python app.py
 ```
 
 Open [http://localhost:5000](http://localhost:5000) in your browser.
 
+No environment variables or API keys needed.
+
 ---
 
-## Deploying to Render
+## Deploy to Render
 
-1. Push this repo to GitHub
-2. Go to [render.com](https://render.com) → **New Web Service** → connect your repo
-3. Render will auto-detect `render.yaml` — no manual config needed
-4. Set the following environment variables in the Render dashboard:
-   - `SUPABASE_URL`
-   - `SUPABASE_KEY`
-5. Click **Deploy**
+1. Go to [render.com](https://render.com) → **New + → Web Service**
+2. Connect your GitHub account and select **ADiTyaRaj8969/Cerebrova**
+3. Render auto-detects `render.yaml` — no manual configuration needed
+4. Click **Deploy Web Service**
 
-> The model weights (`yolov8_weights/best.pt`) are included in the repo so no extra setup is needed.
+No environment variables to set. The model weights are included in the repo.
+
+> Free tier note: the instance spins down after inactivity. The first request after sleep may take ~50 seconds to respond.
 
 ---
 
@@ -102,39 +84,54 @@ Open [http://localhost:5000](http://localhost:5000) in your browser.
 
 ### `POST /predict`
 
-Upload an MRI image for analysis.
+Analyse an uploaded MRI image.
 
-**Request:** `multipart/form-data` with field `image`
+**Request:** `multipart/form-data` with field `image` (JPG or PNG)
 
 **Response:**
 ```json
 {
-  "result_path": "https://...",
   "status": "detected",
-  "confidence": 92,
-  "tumor_class": "Glioma"
+  "confidence": 91,
+  "tumor_class": "Glioma",
+  "result_image_b64": "<base64-encoded JPEG>"
 }
 ```
 
-### `GET /download_report`
+### `POST /download_report`
 
-Returns a PDF report. Query params: `result_path`, `status`, `confidence`, `tumor_class`
+Generate and download a PDF report.
+
+**Request:** `application/x-www-form-urlencoded`
+
+| Field | Description |
+|---|---|
+| `status` | `detected` or `not_detected` |
+| `confidence` | confidence score (integer) |
+| `tumor_class` | tumour type string |
+| `result_image_b64` | base64-encoded result image |
 
 ---
 
 ## Model
 
-The YOLOv8 model (`yolov8_weights/best.pt`) was trained on a labeled brain MRI dataset with four classes:
+The YOLOv8n model was trained on a labelled brain MRI dataset with four classes:
 
 | Class | Description |
 |---|---|
-| Glioma | Tumor arising from glial cells |
-| Meningioma | Tumor in the meninges (brain lining) |
-| Pituitary | Tumor in the pituitary gland |
-| No Tumor | Healthy scan |
+| Glioma | Tumour arising from glial cells |
+| Meningioma | Tumour in the meninges (brain lining) |
+| Pituitary | Tumour in the pituitary gland |
+| No Tumour | Healthy scan |
+
+---
+
+## Author
+
+**Aditya Raj**
 
 ---
 
 ## License
 
-This project is for educational and research purposes.
+This project is for educational and research purposes only. Not intended for clinical use.
