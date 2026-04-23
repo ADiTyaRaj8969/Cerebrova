@@ -5,5 +5,3 @@ Pillow==10.4.0
 opencv-python-headless==4.10.0.84
 reportlab==4.2.2
 python-dotenv==1.0.1
-supabase==2.5.3
-requests==2.32.3
